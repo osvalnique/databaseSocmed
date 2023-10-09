@@ -1,22 +1,28 @@
-from Models import Users
+from Models import Users, Tweet
+from Models.modelsUsers import Status
 from flask import request
+from sqlalchemy import text
 from . import db
 import bcrypt
 
-# create user
+# create user DONE
+# search user DONE
+# deactivate user DONE
+# follow other user DONE
+# unfollow other user DONE
 # change pw user
-# deactivate user
-# search user
-# follow other user
-# unfollow other user
+# most followers
 
-# check users activity *
+# check users inactive *
 # ban users *
 
 def get_all():
     users = Users.query.all()
+    tweets = Tweet.query.all()
     
-    return [{"username" : user.username} for user in users]
+    return {"username" : [user.username for user in users],
+             "tweet" : [tweet.tweet for tweet in tweets]
+             }
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
@@ -29,8 +35,52 @@ def get_user(id):
             "followers_count" : followers_count,
             "followers" : [u.name for u in user.follower_list]}
     
-def get_username(username):
+def get_last_login():
+    last_login = text("SELECT USERNAME , LAST_LOGIN FROM USERS U \
+        WHERE LAST_LOGIN <= now() - INTERVAL '2' MONTH ;")
+    result = db.engine.connect().execute(last_login).mappings().all()
+    return [{"username" : user.username,
+             "last_login" : user.last_login} for user in result]
+    
+def follow():
+    data = request.get_json()
+    
+    if 'follow_id' not in data or 'followed_id' not in data:
+        return 'Input follow_id and followed_id'
+    follow_user = Users.query.filter_by(user_id=data['follow_id']).first()
+    
+    if data['follow_id'] == data['followed_id']:
+        return 'follow_id and followed_id must be different'
+    
+    if follow_user == None:
+        return 'User Not Found', 404
+    
+    followed_user = Users.query.filter_by(user_id=data['followed_id']).first()
+    if followed_user == None:
+        return 'User Not Found', 404
+    
+    found = False
+    for i in range(len(follow_user.following_list)):
+        if follow_user.following_list[i].user_id == followed_user.user_id:
+            follow_user.following_list.pop(i)
+            print(followed_user.following_list)
+            found = True
+            msg = f'You are unfollow {followed_user.username}'
+            break
+    if found == False:
+        follow_user.following_list.append(followed_user)
+        msg = f'You are following {followed_user.username}'
+    db.session.commit()
+    return msg
+    
+            
+def get_profile(username):
     user = Users.query.filter_by(username = username).first_or_404()
+    tweet_user = text("SELECT TWEET, USERNAME  FROM TWEETS T\
+        JOIN USERS U  ON U.USER_ID  = T.USER_ID")
+    result = db.engine.connect().execute(tweet_user).mappings().all()
+    print(result)
+    
     following_count = len(user.following_list)
     followers_count = len(user.follower_list)
     
@@ -38,7 +88,8 @@ def get_username(username):
             "following_count" : following_count,
             "following" : [u.name for u in user.following_list],
             "followers_count" : followers_count,
-            "followers" : [u.name for u in user.follower_list]}
+            "followers" : [u.name for u in user.follower_list],
+            "tweets" : result}
 
 def create_users():
     data = request.get_json()
@@ -54,6 +105,10 @@ def create_users():
         password = hashed,
         bio = data['bio']
     )
+    # if auth.role == "elon_musk":
+    #     if 'role' in data: 
+    #         u.role = data['role']
+
     
     db.session.add(u)
     # db.session.commit()
@@ -74,6 +129,29 @@ def change_username(id):
         return 'Username Changed Successfully'
     
     return 'Please Insert Different Username', 400
+
+def deactivate_user(id):
+    
+    user = Users.query.filter_by(user_id = id).first_or_404()
+    print(type(user.status))
+    
+    if user.status == Status.inactive:
+        user.status = 'active'
+        db.session.commit()
+        return 'User Activate', 200
+    
+    elif user.status == Status.active:
+        user.status = 'inactive'
+        db.session.commit()
+        return 'User Deactivate', 200
+    
+    else :
+        return 'User Banned', 400
+        
+    
+    
+    
+    
 
     
     

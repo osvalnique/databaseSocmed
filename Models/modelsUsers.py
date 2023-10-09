@@ -1,11 +1,20 @@
 from . import db
 from sqlalchemy.orm import relationship
 import datetime
+import enum
 
 follow = db.Table('follow',
                 db.Column('follow', db.Integer, db.ForeignKey('users.user_id'), primary_key = True),
                 db.Column('followed', db.Integer, db.ForeignKey('users.user_id'), primary_key = True)
                 )
+class Status(enum.Enum):
+    active = 'User active'
+    inactive = 'User inactive more than 2 months, or deactivated by themself'
+    banned = 'User permanently banned'
+
+class Role(enum.Enum):
+    user = 'Common User'
+    elon_musk = 'Twitter Owner'
 
 class Users(db.Model):
     __tablename__ = 'users'
@@ -17,10 +26,9 @@ class Users(db.Model):
     password = db.Column(db.String, nullable = False)
     created_at = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
     bio = db.Column(db.String(255))
-    tweets = db.Column(db.Integer, default = 0)
-    following = db.Column(db.Integer, default = 0)
-    followers = db.Column(db.Integer, default = 0)
     last_login = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
+    role = db.Column(db.Enum(Role))
+    status = db.Column(db.Enum(Status))
     
     
     # followed = relationship('Users', secondary = follow, backref = 'user_followed', foreign_keys='follow.followed')
@@ -31,3 +39,8 @@ class Users(db.Model):
                                 secondaryjoin = (follow.c.followed == user_id),
                                 backref = 'follower_list'
                                 )
+    
+    tweet_list =  db.relationship('Tweet', backref = 'user', lazy = True)
+    
+def __repr__(self):
+    return f'<user {self.user_id}'

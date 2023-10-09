@@ -14,7 +14,10 @@ class Tweet(db.Model):
     tweet = db.Column(db.String(280), nullable = False)
     created_at = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
     
-    liked = relationship('Tweet', secondary = like, backref = 'likes')
+    liked = relationship('Users', secondary = like, lazy='subquery', backref = db.backref('tweet_liked', lazy=True))
+    
+def __repr__(self):
+    return f'<tweet {self.tweet_id}'
 
 # get tweet id
 # get user liked the tweet

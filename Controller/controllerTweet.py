@@ -1,29 +1,49 @@
-from Models import Tweet
+from Models import Tweet, Users
 from flask import request 
 from . import db
 
-# post tweet
-# edit tweet
-# delete tweet
-# read tweet
-# read others tweet
-# like tweet
-# unlike tweet
-# search tweet
+# post tweet DONE
+# edit tweet DONE
+# delete tweet DONE
+# read tweet DONE
+# read others tweet DONE
+# like tweet DONE
+# unlike tweet DONE
+# search tweet DONE
 
-# delete others tweet *
+# most liked tweet
+
+# delete others tweet * DONE
 
 
 def get_all():
     tweets = Tweet.query.all()
     
-    return [{"tweet" : tweet.tweet} for tweet in tweets]
+    return [{"tweet" : tweet.tweet,
+             "posted_by" : tweet.user.username,
+             "created_at" : tweet.created_at} for tweet in tweets]
 
 def get_tweet(id):
     tweet = Tweet.query.filter_by(tweet_id = id).first_or_404()
     
-    return {"posted_by" : tweet.user_id,
-            "tweet" : tweet.tweet} 
+    return {"tweet" : tweet.tweet,
+            "posted_by" : tweet.user.username,
+            "created_at" : tweet.created_at} 
+    
+# def get_tweets(username):
+#     tweet = Tweet.query.filter_by(username = username).first_or_404()
+    
+#     return {"tweet" : tweet.tweet,
+#             "posted_by" : tweet.user.username,
+#             "created_at" : tweet.created_at} 
+    
+def search_tweet(content):
+    tweet = Tweet.query.filter(Tweet.tweet.ilike(f"%{content}%")).all()
+    
+    print(tweet)
+    return [{"tweet": t.tweet,
+            "posted_by" : t.user.username} 
+            for t in tweet], 200
 
 def post_tweet():
     tweet = request.get_json()
@@ -48,7 +68,28 @@ def delete_tweet(id):
     tweet = Tweet.query.filter_by(tweet_id=id).first_or_404() 
     # db.session.delete(tweet)
     return f'Tweet "{tweet.tweet}" deleted'
+
+def like_tweet(id):
+    data = request.get_json()
+    if 'user_id' not in data:
+        return 'Please Input user_id', 400
+        
+    tweet = Tweet.query.filter_by(tweet_id=id).first_or_404() 
+    user = Users.query.filter_by(user_id=data['user_id']).first()
+    if user == None :
+        return 'Invalid user_id'
+    found = False
     
+    for i in range(len(tweet.liked)):
+        if tweet.liked[i].user_id == user.user_id:
+            tweet.liked.pop(i)
+            found = True
+            break
+    if found == False:   
+        tweet.liked.append(user)
+        
+    db.session.commit()
+    return {'liked_by': [user.username for user in tweet.liked]} 
     
     
     
