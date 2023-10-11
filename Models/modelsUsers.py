@@ -14,7 +14,7 @@ class Status(enum.Enum):
 
 class Role(enum.Enum):
     user = 'Common User'
-    elon_musk = 'Twitter Owner'
+    developer = 'Developer'
 
 class Users(db.Model):
     __tablename__ = 'users'

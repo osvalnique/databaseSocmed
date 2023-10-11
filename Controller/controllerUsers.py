@@ -17,12 +17,11 @@ import bcrypt
 # ban users *
 
 def get_all():
-    users = Users.query.all()
     tweets = Tweet.query.all()
-    
-    return {"username" : [user.username for user in users],
-             "tweet" : [tweet.tweet for tweet in tweets]
-             }
+
+    return [{"tweet": t.tweet,
+            "posted_by" : t.user.username} 
+            for t in tweets], 200
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
@@ -103,15 +102,15 @@ def create_users():
         email = data['email'],
         username = str(data['username']).lower(),
         password = hashed,
-        bio = data['bio']
+        bio = data['bio'],
     )
-    # if auth.role == "elon_musk":
-    #     if 'role' in data: 
-    #         u.role = data['role']
-
-    
+    # # print(data)
+    # if Users.role == "developer":
+    #     role = data['role']
+        
+    #     return role
     db.session.add(u)
-    # db.session.commit()
+    db.session.commit()
     
     return 'Account Created Successfully', 201
 
@@ -147,6 +146,12 @@ def deactivate_user(id):
     
     else :
         return 'User Banned', 400
+    
+def delete_user(id):
+    user = Users.query.filter_by(user_id=id).first_or_404()
+    
+    db.session.delete(user)
+    return f'Username "{user.username}" deleted'
         
     
     

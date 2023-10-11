@@ -1,10 +1,14 @@
 from . import blueprint
 from Models import Users, db
 from Controller import controllerUsers
+from Controller.auth import login_required
 import bcrypt
 
 
 @blueprint.route("/users")
+@login_required
+# @developer
+
 def get_users():
     users = controllerUsers.get_all()
     
@@ -49,5 +53,11 @@ def deactivate_user(id):
 @blueprint.route("/change_username/<int:id>", methods = ['PUT'])
 def change_username():
     users = controllerUsers.change_username()
+    
+    return users
+
+@blueprint.route("/delete_user/<int:id>", methods = ['DELETE'])
+def delete_user(id):
+    users = controllerUsers.delete_user(id)
     
     return users
