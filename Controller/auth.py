@@ -1,5 +1,5 @@
-from flask import request, json, abort
-from Models.modelsUsers import Users
+from flask import request, abort, g
+from Models.modelsUsers import Users, Role, Status
 from functools import wraps
 import bcrypt
 # import jsonpickle
@@ -15,7 +15,6 @@ def login_required(f):
             # print(username, password)
         
             user = Users.query.filter_by(username=username).first()
-            # print(user)
             if username == "" :
                 abort(401, 'Enter Username')
                 
@@ -26,60 +25,33 @@ def login_required(f):
                 is_match = bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
                 # print(is_match)
                 if is_match == True:
-                    return user
+                    g.user = user
                 else :
                     abort(401, 'Password Incorrect')
             
             return f(*args, **kwargs)
-        
+        else :
+            abort(401, 'Authorization Required')
+            
         wrap.__name__ = f.__name__
     return wrap
 
-# def developer(f):
-#     @wraps(f)
-#     def wrap(*args, **kwargs):
-#         data = Users.role
-#         print(data)
-#         if data == 'user':
-#             abort(401, 'User Not Allowed')
+def developer(f):
+    def wrap(*args, **kwargs):
+        if g.user.role != Role.developer:
+            abort(401, 'User Not Allowed')
             
-#         return f(*args, **kwargs)
+        return f(*args, **kwargs)
         
-#     wrap.__name__ = f.__name__
-#     return wrap
+    wrap.__name__ = f.__name__
+    return wrap
 
-# from functools import wraps
-# from flask import abort
-
-# def developer(f):
-#     @wraps(f)
-#     def wrap(*args, **kwargs):
-#         # Assuming Users.role is a valid way to get the user's role
-#         data = Users.role  # You need to define Users.role somewhere in your code
+def banned(f):
+    def wrap(*args, **kwargs):
+        if g.user.status == Status.banned:
+            abort(401, 'This Account Has Been Suspended')
+            
+        return f(*args, **kwargs)
         
-#         print(data)
-#         if data == 'user':
-#             abort(401, 'User Not Allowed')
-        
-#         return f(*args, **kwargs)
-        
-#     return wrap
-
-             
-                
-
-# def login_required(f):
-#     @wraps(f)
-#     def wrap(*args, **kwargs):
-#     data = request.authorization
-    
-#         if not request.headers["authorization"]:
-#             return redirect("login page")
-#         # get user via some ORM system
-#         user = User.get(request.headers["authorization"])
-#         # make user available down the pipeline via flask.g
-#         g.user = user
-#         # finally call f. f() now haves access to g.user
-#         return f(*args, **kwargs)
-   
-#     return wrap
+    wrap.__name__ = f.__name__
+    return wrap

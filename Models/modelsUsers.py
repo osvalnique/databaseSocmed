@@ -27,8 +27,8 @@ class Users(db.Model):
     created_at = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
     bio = db.Column(db.String(255))
     last_login = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
-    role = db.Column(db.Enum(Role))
-    status = db.Column(db.Enum(Status))
+    role = db.Column(db.Enum(Role), default = Role.user)
+    status = db.Column(db.Enum(Status), default = Status.active)
     
     
     # followed = relationship('Users', secondary = follow, backref = 'user_followed', foreign_keys='follow.followed')

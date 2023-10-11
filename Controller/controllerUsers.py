@@ -1,6 +1,6 @@
 from Models import Users, Tweet
 from Models.modelsUsers import Status
-from flask import request
+from flask import abort, request, g
 from sqlalchemy import text
 from . import db
 import bcrypt
@@ -114,20 +114,31 @@ def create_users():
     
     return 'Account Created Successfully', 201
 
-def change_username(id):
+def update_user(id):
     data = request.get_json()
     user = Users.query.filter_by(user_id=id).first_or_404()
     
+    if g.user.user_id != id:
+        abort(401, "Username doesn't match with id")
+        
     if user.username != data['username']:
         u = Users.query.filter_by(username = data['username']).first()
         if u != None :
             return 'Username Already Exist', 400
         user.username = data['username']
         
-        db.session.commit()
-        return 'Username Changed Successfully'
+    hashed = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    user.password = hashed
+    # user.password = data['password']
+    print(data['password'])
+    db.session.commit()
     
-    return 'Please Insert Different Username', 400
+    
+    g.pop('user')
+
+    return 'User Updated Successfully'
+
+
 
 def deactivate_user(id):
     
@@ -147,12 +158,19 @@ def deactivate_user(id):
     else :
         return 'User Banned', 400
     
-def delete_user(id):
+def ban_user(id):
     user = Users.query.filter_by(user_id=id).first_or_404()
     
-    db.session.delete(user)
-    return f'Username "{user.username}" deleted'
-        
+    if user.status == Status.active or user.status == Status.inactive:
+        user.status = 'banned'
+        db.session.commit()
+        return f'User {user.username} is Suspended', 200
+    
+    elif user.status == Status.banned:
+        user.status = 'active'
+        db.session.commit()
+        return f'User {user.username} is Reactivated', 200
+     
     
     
     
