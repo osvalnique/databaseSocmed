@@ -4,12 +4,14 @@ from flask import abort, request, g
 from sqlalchemy import text
 from . import db
 import bcrypt
+import re
 
 # create user DONE
 # search user DONE
 # deactivate user DONE
 # follow other user DONE
 # unfollow other user DONE
+# get tweet from following
 # change pw user
 # most followers
 
@@ -25,6 +27,17 @@ def get_all():
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
+    following_count = len(user.following_list)
+    followers_count = len(user.follower_list)
+    
+    return {"username" : user.name,
+            "following_count" : following_count,
+            "following" : [u.name for u in user.following_list],
+            "followers_count" : followers_count,
+            "followers" : [u.name for u in user.follower_list]}
+    
+def get_username(username):
+    user = Users.query.filter_by(username = username).first_or_404()
     following_count = len(user.following_list)
     followers_count = len(user.follower_list)
     
@@ -62,7 +75,7 @@ def follow():
     for i in range(len(follow_user.following_list)):
         if follow_user.following_list[i].user_id == followed_user.user_id:
             follow_user.following_list.pop(i)
-            print(followed_user.following_list)
+            # print(followed_user.following_list)
             found = True
             msg = f'You are unfollow {followed_user.username}'
             break
@@ -71,28 +84,37 @@ def follow():
         msg = f'You are following {followed_user.username}'
     db.session.commit()
     return msg
-    
-            
-def get_profile(username):
-    user = Users.query.filter_by(username = username).first_or_404()
-    tweet_user = text("SELECT TWEET, USERNAME  FROM TWEETS T\
-        JOIN USERS U  ON U.USER_ID  = T.USER_ID")
-    result = db.engine.connect().execute(tweet_user).mappings().all()
-    print(result)
-    
-    following_count = len(user.following_list)
-    followers_count = len(user.follower_list)
-    
-    return {"username" : user.name,
-            "following_count" : following_count,
-            "following" : [u.name for u in user.following_list],
-            "followers_count" : followers_count,
-            "followers" : [u.name for u in user.follower_list],
-            "tweets" : result}
 
+
+def get_following_tweets(user_id):
+    tweets = text('SELECT * FROM TWEETS T \
+        JOIN USERS U ON u.USER_ID = t.USER_ID \
+        WHERE t.USER_ID IN (SELECT followed FROM FOLLOW F)\
+        ORDER BY t.CREATED_AT DESC;')
+    result = result = db.engine.connect().execute(tweets).mappings().all()
+    print(result)
+    return [{'tweet' : t.tweet,
+             'posted_by' : t.username,
+             'created_at' : t.created_at} for t in result]
+            
 def create_users():
     data = request.get_json()
+    username = Users.query.filter_by(username = data['username']).first()
     
+    email = data['email']
+    pattern = r'^[a-zA-Z0-9_.+-]{6,}@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    is_match = bool(re.match(pattern, email))
+    
+    if email != None:
+        return 'Email is Already Registered', 400
+    
+    if username != None:
+        return 'Username Already Exist', 400
+      
+    if is_match == False:
+        return 'Please Enter Valid email', 400
+            
+        
     data['password'] = str(data['password']).encode('utf-8')
     hashed = bcrypt.hashpw(data['password'], bcrypt.gensalt())
     hashed = hashed.decode('utf-8')
@@ -104,11 +126,7 @@ def create_users():
         password = hashed,
         bio = data['bio'],
     )
-    # # print(data)
-    # if Users.role == "developer":
-    #     role = data['role']
-        
-    #     return role
+
     db.session.add(u)
     db.session.commit()
     
@@ -129,22 +147,17 @@ def update_user(id):
         
     hashed = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     user.password = hashed
-    # user.password = data['password']
-    print(data['password'])
+  
     db.session.commit()
-    
     
     g.pop('user')
 
     return 'User Updated Successfully'
 
 
-
 def deactivate_user(id):
-    
     user = Users.query.filter_by(user_id = id).first_or_404()
-    print(type(user.status))
-    
+
     if user.status == Status.inactive:
         user.status = 'active'
         db.session.commit()
@@ -170,6 +183,19 @@ def ban_user(id):
         user.status = 'active'
         db.session.commit()
         return f'User {user.username} is Reactivated', 200
+    
+def most_followers():
+    followers = text('SELECT username, x.followers \
+        FROM \
+        (SELECT FOLLOWED, count(FOLLOWED) followers \
+        FROM FOLLOW F GROUP BY followed) x\
+        JOIN USERS U ON u.USER_ID = x.followed \
+        ORDER BY x.followers DESC\
+        LIMIT 2;')
+    result = db.engine.connect().execute(followers).mappings().all()
+
+    return {'results' : [dict(f) for f in result]}
+        
      
     
     

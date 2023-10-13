@@ -26,6 +26,7 @@ def login_required(f):
                 # print(is_match)
                 if is_match == True:
                     g.user = user
+                    print(user)
                 else :
                     abort(401, 'Password Incorrect')
             
