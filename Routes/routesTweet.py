@@ -39,7 +39,7 @@ def get_tweet_user(username):
 @blueprint.route("/tweets/<string:content>")
 @login_required
 # @developer
-# @banned
+@banned
 def search_tweet(content):
     tweet = controllerTweet.search_tweet(content)
     

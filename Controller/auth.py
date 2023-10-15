@@ -1,8 +1,9 @@
 from flask import request, abort, g
 from Models.modelsUsers import Users, Role, Status
 from functools import wraps
+from . import db
 import bcrypt
-# import jsonpickle
+
 
 def login_required(f):
     @wraps(f)
@@ -18,7 +19,7 @@ def login_required(f):
             if username == "" :
                 abort(401, 'Enter Username')
                 
-            if password == "" :
+            if password == "" and len(password):
                 abort(401, 'Enter Password')
             
             if user != None:
@@ -26,10 +27,9 @@ def login_required(f):
                 # print(is_match)
                 if is_match == True:
                     g.user = user
-                    print(user)
                 else :
                     abort(401, 'Password Incorrect')
-            
+                                
             return f(*args, **kwargs)
         else :
             abort(401, 'Authorization Required')
@@ -49,6 +49,11 @@ def developer(f):
 
 def banned(f):
     def wrap(*args, **kwargs):
+        if g.user.status == Status.inactive:
+            g.user.status = Status.active
+            db.session.commit()
+            return f'Welcome Back {g.user.username}'
+        
         if g.user.status == Status.banned:
             abort(401, 'This Account Has Been Suspended')
             

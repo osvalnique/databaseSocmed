@@ -99,22 +99,25 @@ def get_following_tweets(user_id):
             
 def create_users():
     data = request.get_json()
-    username = Users.query.filter_by(username = data['username']).first()
+    user = Users.query.filter_by(email = data['email']).first()
     
-    email = data['email']
     pattern = r'^[a-zA-Z0-9_.+-]{6,}@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    is_match = bool(re.match(pattern, email))
+    is_match = bool(re.match(pattern, data['email']))
     
-    if email != None:
+    if user != None:
+        username = Users.query.filter_by(username = data['username']).first()
+        if username != None:
+            return 'Username Already Exist', 400
+        
         return 'Email is Already Registered', 400
     
-    if username != None:
-        return 'Username Already Exist', 400
       
     if is_match == False:
         return 'Please Enter Valid email', 400
-            
-        
+    
+    if len(data['password']) < 8:
+        return 'Password Must Contains at Least 8 Characters'
+    
     data['password'] = str(data['password']).encode('utf-8')
     hashed = bcrypt.hashpw(data['password'], bcrypt.gensalt())
     hashed = hashed.decode('utf-8')
@@ -127,8 +130,8 @@ def create_users():
         bio = data['bio'],
     )
 
-    db.session.add(u)
-    db.session.commit()
+    # db.session.add(u)
+    # db.session.commit()
     
     return 'Account Created Successfully', 201
 
