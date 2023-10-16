@@ -41,7 +41,6 @@ def get_tweets(username):
             "posted_by" : tweet.user.username,
             "created_at" : tweet.created_at} for tweet in user.tweet_list]}
     
-    
 def search_tweet(content):
     tweet = Tweet.query.filter(Tweet.tweet.ilike(f"%{content}%")).all()
     
@@ -93,7 +92,6 @@ def like_tweet(id):
         
     db.session.commit()
     return {'liked_by': [user.username for user in tweet.liked]}
-
 
 def most_liked():
     likes = text('SELECT t.tweet_id, username, tweet, x.likes\

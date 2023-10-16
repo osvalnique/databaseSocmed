@@ -85,7 +85,6 @@ def follow():
     db.session.commit()
     return msg
 
-
 def get_following_tweets(user_id):
     tweets = text('SELECT * FROM TWEETS T \
         JOIN USERS U ON u.USER_ID = t.USER_ID \
@@ -105,13 +104,12 @@ def create_users():
     is_match = bool(re.match(pattern, data['email']))
     
     if user != None:
-        username = Users.query.filter_by(username = data['username']).first()
-        if username != None:
-            return 'Username Already Exist', 400
-        
         return 'Email is Already Registered', 400
-    
-      
+        
+    username = Users.query.filter_by(username = data['username']).first()
+    if username != None:
+        return 'Username Already Exist', 400
+        
     if is_match == False:
         return 'Please Enter Valid email', 400
     
@@ -156,7 +154,6 @@ def update_user(id):
     g.pop('user')
 
     return 'User Updated Successfully'
-
 
 def deactivate_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
