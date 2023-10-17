@@ -18,7 +18,6 @@ from . import db
 
 
 def get_all():
-
     tweets = Tweet.query.all()
     
     return [{"tweet" : tweet.tweet,

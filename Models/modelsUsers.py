@@ -1,11 +1,13 @@
 from . import db
 from sqlalchemy.orm import relationship
+from uuid import uuid4
+from sqlalchemy import UUID
 import datetime
 import enum
 
 follow = db.Table('follow',
-                db.Column('follow', db.Integer, db.ForeignKey('users.user_id'), primary_key = True),
-                db.Column('followed', db.Integer, db.ForeignKey('users.user_id'), primary_key = True)
+                db.Column('follow', UUID(as_uuid=True), db.ForeignKey('users.user_id'), primary_key = True),
+                db.Column('followed', UUID(as_uuid=True), db.ForeignKey('users.user_id'), primary_key = True)
                 )
 class Status(enum.Enum):
     active = 'User active'
@@ -19,7 +21,7 @@ class Role(enum.Enum):
 class Users(db.Model):
     __tablename__ = 'users'
     
-    user_id = db.Column(db.Integer, primary_key = True, autoincrement = True)
+    user_id = db.Column(UUID(as_uuid=True), primary_key = True, default = uuid4)
     email = db.Column(db.String(50), nullable = False, unique = True)
     name = db.Column(db.String, nullable = False)
     username = db.Column(db.String, unique = True, nullable = False)

@@ -1,23 +1,35 @@
-from flask import g
+from flask import g, request, jsonify
 from . import blueprint
 from Models import Users, db
-from Controller import controllerUsers
-from Controller.auth import login_required, developer, banned
+from Controller import controllerUsers, auth
+from flask_jwt_extended import jwt_required
+# from Controller.auth import login_required, developer, banned
 import bcrypt
 
+@blueprint.route("/login", methods=["POST"])
+def login():
+    login = auth.login()
+    return login
+
+@blueprint.route("/refresh")
+@jwt_required(refresh = True)
+def refresh():
+    refresh = auth.refresh_token()
+    return refresh
 
 @blueprint.route("/users")
-@login_required
-@developer
+@jwt_required()
+# @login_required
+# @developer
 # @banned
 def get_users():
     users = controllerUsers.get_all()
     
     return users
 
-@blueprint.route("/users/<int:id>")
-@login_required
-@developer
+@blueprint.route("/users/<uuid:id>")
+# @login_required
+# @developer
 # @banned
 def get_user(id):
     users = controllerUsers.get_user(id)
@@ -25,8 +37,8 @@ def get_user(id):
     return users
 
 @blueprint.route("/users_last_login")
-@login_required
-@developer
+# @login_required
+# @developer
 # @banned
 def get_last_login():
     users = controllerUsers.get_last_login()
@@ -34,7 +46,7 @@ def get_last_login():
     return users
 
 @blueprint.route("/users/<string:username>")
-@login_required
+# @login_required
 # @developer
 # @banned
 def get_username(username):
@@ -52,9 +64,9 @@ def create_users():
     return users
 
 @blueprint.route("/follow_user", methods = ['PUT'])
-@login_required
+# @login_required
 # @developer
-@banned
+# @banned
 def follow():
     users = controllerUsers.follow()
     
@@ -67,7 +79,7 @@ def follow():
     # return users
 
 @blueprint.route("/deactivate_user/<int:id>", methods = ['PUT'])
-@login_required
+# @login_required
 # @developer
 # @banned
 def deactivate_user(id):
@@ -76,17 +88,17 @@ def deactivate_user(id):
     return users
 
 @blueprint.route("/update_user/<int:id>", methods = ['PUT'])
-@login_required
+# @login_required
 # @developer
-@banned
+# @banned
 def update_user(id):
     users = controllerUsers.update_user(id)
     
     return users
 
 @blueprint.route("/ban_user/<int:id>", methods = ['PUT'])
-@login_required
-@developer
+# @login_required
+# @developer
 # @banned
 def ban_user(id):
     users = controllerUsers.ban_user(id)
@@ -94,7 +106,7 @@ def ban_user(id):
     return users
 
 @blueprint.route("/most_followers")
-@login_required
+# @login_required
 # @developer
 # @banned
 def most_followers():
@@ -102,10 +114,9 @@ def most_followers():
     return users
 
 @blueprint.route("/following_tweets")
-@login_required
+# @login_required
 
 def get_following_tweets():
     user_id = g.user
     users = controllerUsers.get_following_tweets(user_id)
     return users
-

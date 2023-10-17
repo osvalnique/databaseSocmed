@@ -19,11 +19,12 @@ import re
 # ban users *
 
 def get_all():
-    tweets = Tweet.query.all()
-
-    return [{"tweet": t.tweet,
-            "posted_by" : t.user.username} 
-            for t in tweets], 200
+    users = Users.query.all()
+    return [{"username" : user.name,
+            "following_count" : len(user.following_list),
+            "followers_count" : len(user.follower_list),
+            "following" : [u.name for u in user.following_list],
+            "followers" : [u.name for u in user.follower_list]} for user in users]
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
@@ -128,8 +129,8 @@ def create_users():
         bio = data['bio'],
     )
 
-    # db.session.add(u)
-    # db.session.commit()
+    db.session.add(u)
+    db.session.commit()
     
     return 'Account Created Successfully', 201
 
