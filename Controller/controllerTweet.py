@@ -1,6 +1,7 @@
 from sqlalchemy import text
 from Models import Tweet, Users
 from flask import request
+from flask_jwt_extended import current_user
 from . import db
 
 # post tweet DONE
@@ -34,7 +35,7 @@ def get_tweet(id):
 def get_tweets(username):
     user = Users.query.filter_by(username = username).first_or_404()
     if len(user.tweet_list) <= 0:
-        return f"{username} Haven't Post Any Tweets"
+        return {"msg" : f"{username} Haven't Post Any Tweets"}, 400
     
     return {'tweets': [{"tweet" : tweet.tweet,
             "posted_by" : tweet.user.username,
@@ -48,50 +49,91 @@ def search_tweet(content):
             for t in tweet], 200
 
 def post_tweet():
-    tweet = request.get_json()
+    data = request.form
+    user_id = current_user.user_id
     
-    t= Tweet(
-        user_id = tweet['user_id'],
-        tweet = tweet['tweet']
-        )
-    db.session.add(t)
-    db.session.commit()
-    return 'Tweet Posted', 200
-
-def edit_tweet(id):
-    data = request.get_json()
-    tweet = Tweet.query.filter_by(tweet_id = id).first_or_404()
-    
-    tweet.tweet = data['tweet']
-    db.session.commit()
-    return "Tweet Edited", 200
-    
-def delete_tweet(id):
-    tweet = Tweet.query.filter_by(tweet_id=id).first_or_404() 
-    return f'Tweet "{tweet.tweet}" deleted'
-
-def like_tweet(id):
-    data = request.get_json()
-    if 'user_id' not in data:
-        return 'Please Input user_id', 400
+    if data.get('tweet') != None:
+        if len(data.get('tweet')) > 280:
+            return {"msg" : 'Maximum Tweet is 280 Characters'}, 400
         
-    tweet = Tweet.query.filter_by(tweet_id=id).first_or_404() 
-    user = Users.query.filter_by(user_id=data['user_id']).first()
-    if user == None :
-        return 'Invalid user_id'
+        if len(data.get('tweet')) <= 0:
+            return {"msg" : 'Tweet Cannot be Empty'}, 400
+
+        t= Tweet(
+            user_id = user_id,
+            tweet = data.get('tweet')
+            )
+        db.session.add(t)
+        db.session.commit()
+        return {"msg" : 'Tweet Posted'} , 200
+
+    else:
+        return {"msg" : 'Tweet Cannot be Empty'}, 400
+
+def edit_tweet(tweet_id):
+    data = request.form
+    user_id = current_user.user_id
+    tweet = Tweet.query.filter_by(tweet_id = tweet_id).first_or_404()
+    
+    if user_id == tweet.user_id:
+        tweet.tweet = data.get('tweet')
+        db.session.commit()
+        return {"msg" : "Tweet Edited"}, 200
+    
+    return {"msg" : "Tweet Id Is Not Match"}, 400
+    
+def delete_tweet(tweet_id):
+    user_id = current_user.user_id
+    tweet = Tweet.query.filter_by(tweet_id=tweet_id, user_id=user_id).first_or_404()
+    
+    if user_id == tweet.user_id:
+        db.session.delete(tweet)
+        db.session.commit() 
+        return {"msg" : f'Tweet {tweet.tweet} deleted'}, 200
+    
+    if tweet_id != tweet.tweet_id:
+        return {"msg" : "Tweet Id Is Not Match"}, 400
+
+def like_tweet(tweet_id):
+    user = current_user.user_id
+    user_id = Users.query.filter_by(user_id = user).first()
+    tweet = Tweet.query.filter_by(tweet_id = tweet_id).first_or_404() 
+    
+    if tweet == None :
+        return {"msg" : 'Invalid tweet id'}, 400
+    
     found = False
     
     for i in range(len(tweet.liked)):
-        if tweet.liked[i].user_id == user.user_id:
-            tweet.liked.pop(i)
+        if tweet.liked[i].user_id == user:
             found = True
-            break
-    if found == False:   
-        tweet.liked.append(user)
-        
-    db.session.commit()
-    return {'liked_by': [user.username for user in tweet.liked]}
+            return {"msg" : "Already Liked"}, 400
 
+    if found == False:   
+        tweet.liked.append(user_id)
+        db.session.commit()
+        return {'liked_by': [user.username for user in tweet.liked]}    
+        
+def unlike_tweet(tweet_id):
+    user = current_user.user_id
+    user_id = Users.query.filter_by(user_id = user).first()
+    tweet = Tweet.query.filter_by(tweet_id = tweet_id).first_or_404() 
+    
+    if tweet == None :
+        return {"msg" : 'Invalid tweet id'}, 400
+    
+    found = False
+    
+    for i in range(len(tweet.liked)):
+        if tweet.liked[i].user_id == user:
+            tweet.liked.pop(i)
+            db.session.commit()
+            found = True
+            return {"msg" : "Already Unliked"}, 400
+
+    if found == False:   
+        return {"msg" : "You Haven't Like This Tweet Yet"}, 400    
+        
 def most_liked():
     likes = text('SELECT t.tweet_id, username, tweet, x.likes\
         FROM (SELECT l.tweet_id, COUNT(l.tweet_id) likes \

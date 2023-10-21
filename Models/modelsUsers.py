@@ -9,6 +9,7 @@ follow = db.Table('follow',
                 db.Column('follow', UUID(as_uuid=True), db.ForeignKey('users.user_id'), primary_key = True),
                 db.Column('followed', UUID(as_uuid=True), db.ForeignKey('users.user_id'), primary_key = True)
                 )
+                
 class Status(enum.Enum):
     active = 'User active'
     inactive = 'User inactive more than 2 months, or deactivated by themself'
@@ -31,10 +32,8 @@ class Users(db.Model):
     last_login = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
     role = db.Column(db.Enum(Role), default = Role.user)
     status = db.Column(db.Enum(Status), default = Status.active)
+    img_url = db.Column(db.String)
     
-    
-    # followed = relationship('Users', secondary = follow, backref = 'user_followed', foreign_keys='follow.followed')
-    # follows = relationship('Users', secondary = follow, backref = 'user_following', foreign_keys='follow.follow')
     following_list = db.relationship('Users', 
                                 secondary = follow, 
                                 primaryjoin = (follow.c.follow == user_id),
