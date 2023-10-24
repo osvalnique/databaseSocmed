@@ -1,7 +1,7 @@
 import os
 from uuid import uuid4
 from Models import Users, Tweet
-from Models.modelsUsers import Status
+from Models.modelsUsers import Role, Status
 from flask import abort, request, g
 from sqlalchemy import text
 from flask_jwt_extended import current_user
@@ -10,56 +10,70 @@ from werkzeug.utils import secure_filename
 import bcrypt
 import re
 
-# create user DONE
-# search user DONE
-# deactivate user DONE
-# follow other user DONE
-# unfollow other user DONE
-# get tweet from following
-# change pw user
-# most followers
-
-# check users inactive *
-# ban users *
-
 def get_all():
-    users = Users.query.all()
-    # print(current_user)
-    return [{"username" : user.name,
-            "following_count" : len(user.following_list),
-            "followers_count" : len(user.follower_list),
-            "following" : [u.name for u in user.following_list],
-            "followers" : [u.name for u in user.follower_list]} for user in users]
+    user = Users.query.all()
+    following_count = len(user.following_list)
+    followers_count = len(user.follower_list)
+    
+    return {"result" :
+            {"username" : user.username,
+            "name" : user.name,
+            "following_count" : following_count,
+            "followers_count" : followers_count,
+            "profile_picture" : user.img_url
+            }}
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
     following_count = len(user.following_list)
     followers_count = len(user.follower_list)
     
-    return {"username" : user.name,
+    return {"result" :
+            {"username" : user.username,
+            "name" : user.name,
             "following_count" : following_count,
-            "following" : [u.name for u in user.following_list],
             "followers_count" : followers_count,
-            "followers" : [u.name for u in user.follower_list]}
-    
+            "profile_picture" : user.img_url
+            }}
     
 def get_username(username):
     user = Users.query.filter_by(username = username).first_or_404()
+    tweet = Tweet.query.filter_by(user_id = user.user_id).all()
+    tweet_count = len(tweet)
     following_count = len(user.following_list)
     followers_count = len(user.follower_list)
     
-    return {"username" : user.name,
+    return {"result" :
+            {"username" : user.username,
+            "bio" : user.bio,
+            "name" : user.name,
             "following_count" : following_count,
-            "following" : [u.name for u in user.following_list],
             "followers_count" : followers_count,
-            "followers" : [u.name for u in user.follower_list]}
+            "tweet_count" : tweet_count,
+            "profile_picture" : user.img_url
+            }}
+    
+def get_following_list(username):
+    user = Users.query.filter_by(username = username).first_or_404()
+    
+    return {"result" : 
+            {"following" : [u.username for u in user.following_list]
+            }}
+
+def get_followed_list(username):
+    user = Users.query.filter_by(username = username).first_or_404()
+    
+    return {"result" :
+            {"followers" : [u.username for u in user.follower_list]
+            }}
     
 def get_last_login():
     last_login = text("SELECT USERNAME , LAST_LOGIN FROM USERS U \
         WHERE LAST_LOGIN <= now() - INTERVAL '2' MONTH ;")
     result = db.engine.connect().execute(last_login).mappings().all()
-    return [{"username" : user.username,
-             "last_login" : user.last_login} for user in result]
+    return {"result" : 
+            [{"username" : user.username,
+             "last_login" : user.last_login} for user in result]}
     
 def follow(followed_id):
     user_id = current_user.user_id
@@ -81,9 +95,7 @@ def follow(followed_id):
         return {"msg" : f'Now You Are Following {followed_user.username}'}
     
 def unfollow(followed_id):
-    # user_id = current_user.user_id
     followed_user = Users.query.filter_by(user_id = followed_id).first()
-    # print(followed_user)
     
     if followed_user == None:
         return {"msg" : 'User is Not Found'}, 400
@@ -102,16 +114,17 @@ def unfollow(followed_id):
         
     return {"msg" : f'You Are Unfollowed {followed_user.username}'}
     
-def get_following_tweets(user_id):
+def get_following_tweets():
     tweets = text('SELECT * FROM TWEETS T \
         JOIN USERS U ON u.USER_ID = t.USER_ID \
         WHERE t.USER_ID IN (SELECT followed FROM FOLLOW F)\
         ORDER BY t.CREATED_AT DESC;')
     result = db.engine.connect().execute(tweets).mappings().all()
     print(result)
-    return [{'tweet' : t.tweet,
-             'posted_by' : t.username,
-             'created_at' : t.created_at} for t in result]
+    return 'test'
+    # return [{'tweet' : t.tweet,
+    #          'posted_by' : t.username,
+    #          'created_at' : t.created_at} for t in result]
             
 def create_users():
     data = request.form
@@ -156,6 +169,20 @@ def create_users():
     
     return {"msg" : 'Account Created Successfully'}, 201
 
+def change_role(user_id):
+    developer = str(current_user.role)
+    user = Users.query.filter_by(user_id =user_id).first()
+    print(developer)
+    print(user.role)
+    
+    if str(user.role) == "Role.developer":
+        return {"msg" : "You are a Developer"}
+    
+    else :
+        user.role = Role.developer
+        db.session.commit()
+        return {"msg" : f'Now {user.username} is Developer'}
+
 def update_user():
     id = current_user.user_id
     data = request.get_json()
@@ -179,22 +206,27 @@ def update_image():
     current_img = current_user.img_url
 
     if new_img == None:
+        print(new_img)
         return {"msg": 'Please Import an Image'}
     
-    
     filename = uuid4().hex + secure_filename(new_img.filename)
-    path_img = os.path.join('uploadedImg', filename)
-    new_img.save(path_img)
-    print(path_img)
+    format = filename.rsplit('.', 1)[1].lower()
     
-    if current_img != None :
-        old_path = os.path.join('uploadedImg', current_img)
-        os.unlink(old_path)
-          
-    current_user.img_url = filename
+    if format in {'png', 'jpg', 'jpeg', 'gif'}:
+        path_img = os.path.join('uploadedImg', filename)
+        new_img.save(path_img)
     
-    db.session.commit()
-    return {"msg" : "Image Uploaded"}, 200
+        if current_img:
+            old_path = os.path.join('uploadedImg', current_img)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+            
+        current_user.img_url = filename
+        db.session.commit()
+        return {"msg": "Image Uploaded"}, 200
+    
+    return {"msg" : f"Does Not Support {format} Format"}
+
     
 def deactivate_user():
     id = current_user.user_id

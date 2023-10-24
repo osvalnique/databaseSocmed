@@ -7,6 +7,7 @@ import bcrypt
 
 
 @blueprint.route("/login", methods=["POST"])
+@auth.banned
 def login():
     login = auth.login()
     return login
@@ -23,6 +24,14 @@ def create_users():
     
     return users
 
+@blueprint.route("/user/change_role/<uuid:user_id>", methods = ['PUT'])
+@jwt_required()
+@auth.developer
+def change_role(user_id):
+    users = controllerUsers.change_role(user_id)
+    
+    return users
+
 @blueprint.route("/user/get_users")
 @jwt_required()
 @auth.developer
@@ -36,6 +45,23 @@ def get_users():
 @auth.banned
 def get_username(username):
     users = controllerUsers.get_username(username.lower())
+    
+    return users
+
+@blueprint.route("/user/following_list/<string:username>")
+@jwt_required()
+@auth.banned
+def get_following_list(username):
+    users = controllerUsers.get_following_list(username.lower())
+    
+    return users
+
+
+@blueprint.route("/user/followed_list/<string:username>")
+@jwt_required()
+@auth.banned
+def get_followed_list(username):
+    users = controllerUsers.get_followed_list(username.lower())
     
     return users
 

@@ -16,7 +16,7 @@ def login():
     
     is_match = bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8'))
     if is_match == False:
-        return {"msg" : "Password Incorrect"}, 401 
+        return {"msg" : "Password Incorrect"}, 401
     
     else:
         access_token = create_access_token(identity=username)
@@ -29,8 +29,6 @@ def refresh_token():
     new_token = create_access_token(identity=identity)
     return {"access_token" : new_token}
     
-    
-
             
 def developer(f):
     def wrap(*args, **kwargs):
@@ -44,14 +42,17 @@ def developer(f):
 
 def banned(f):
     def wrap(*args, **kwargs):
-        if current_user.status == Status.inactive:
-            current_user.status = Status.active
-            db.session.commit()
-            return f'Welcome Back {g.user.username}'
-        
-        if current_user.status == Status.banned:
-            abort(401, 'This Account Has Been Suspended')
+        data = request.get_json()
+        user = Users.query.filter_by(username = data['username']).first()
+    
+        if user.status == Status.banned:
+            abort(401, {"msg" :'This Account is Suspended'})
             
+        if user.status == Status.inactive:
+            user.status = Status.active
+            db.session.commit()
+            return {"msg" : f'Welcome Back {user.username}'}
+
         return f(*args, **kwargs)
         
     wrap.__name__ = f.__name__

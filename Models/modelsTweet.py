@@ -16,6 +16,7 @@ class Tweet(db.Model):
     user_id = db.Column(UUID(as_uuid = True), db.ForeignKey('users.user_id'), nullable = False)
     tweet = db.Column(db.String(280), nullable = False)
     created_at = db.Column(db.DateTime, default = datetime.datetime.now(), nullable = False)
+    attachment = db.Column(db.String)
     
     liked = relationship('Users', secondary = like, lazy='subquery', backref = db.backref('tweet_liked', lazy=True))
     
@@ -23,20 +24,4 @@ class Tweet(db.Model):
 def __repr__(self):
     return f'<tweet {self.tweet_id}'
 
-# get tweet id
-# get user liked the tweet
-# tweet.liked.append(user)
-# route liked/id tweet, method['put']
-
-# tweet.likes=[<user 1>,<user 2>,<user 3>]
-
-# def isUrang(id):
-# 	return user.id != id
- 
- 
- 
- 
-# new_likes= filter(isUrang,tweet.likes)
-# tweet.likes=new_likes
-# tweet_id, user_id, created_at
 

@@ -1,22 +1,11 @@
+import os
+from uuid import uuid4
 from sqlalchemy import text
 from Models import Tweet, Users
 from flask import request
 from flask_jwt_extended import current_user
+from werkzeug.utils import secure_filename
 from . import db
-
-# post tweet DONE
-# edit tweet DONE
-# delete tweet DONE
-# read tweet DONE
-# read others tweet DONE
-# like tweet DONE
-# unlike tweet DONE
-# search tweet DONE
-
-# most liked tweet
-
-# delete others tweet * DONE
-
 
 def get_all():
     tweets = Tweet.query.all()

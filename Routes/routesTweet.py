@@ -16,16 +16,13 @@ def get_tweets():
 
 @blueprint.route("/tweet/following_tweets")
 @jwt_required()
-@banned
 def get_following_tweets():
-    user_id = current_user.user_id
-    users = controllerUsers.get_following_tweets(user_id)
+    users = controllerUsers.get_following_tweets()
     return users
 
   
 @blueprint.route("/tweet/like/<uuid:tweet_id>", methods = ['POST'])
 @jwt_required()
-@banned
 def like_tweet(tweet_id):
     likes = controllerTweet.like_tweet(tweet_id)
     
@@ -33,7 +30,6 @@ def like_tweet(tweet_id):
     
 @blueprint.route("/tweet/unlike/<uuid:tweet_id>", methods = ['PUT'])
 @jwt_required()
-@banned
 def unlike_tweet(tweet_id):
     likes = controllerTweet.unlike_tweet(tweet_id)
     
@@ -41,7 +37,6 @@ def unlike_tweet(tweet_id):
     
 @blueprint.route("/tweet/search/username/<string:username>")
 @jwt_required()
-@banned
 def get_tweet_user(username):
     tweets = controllerTweet.get_tweets(username)
     
@@ -49,7 +44,6 @@ def get_tweet_user(username):
  
 @blueprint.route("/tweet/search/content/<string:content>")
 @jwt_required()
-@banned
 def search_tweet(content):
     tweet = controllerTweet.search_tweet(content)
     
@@ -57,7 +51,6 @@ def search_tweet(content):
 
 @blueprint.route("/tweet/post", methods = ['POST'])
 @jwt_required()
-@banned
 def post_tweet():
     tweets = controllerTweet.post_tweet()
     
@@ -65,7 +58,6 @@ def post_tweet():
 
 @blueprint.route("/tweet/edit/<uuid:tweet_id>", methods = ['PUT'])
 @jwt_required()
-@banned
 def edit_tweet(tweet_id):
     tweets = controllerTweet.edit_tweet(tweet_id)
     
@@ -73,7 +65,6 @@ def edit_tweet(tweet_id):
 
 @blueprint.route("/tweet/delete/<uuid:tweet_id>", methods = ['DELETE'])
 @jwt_required()
-@banned
 def delete_tweet(tweet_id):
     tweets = controllerTweet.delete_tweet(tweet_id)
     
