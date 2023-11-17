@@ -56,6 +56,14 @@ def post_tweet():
     
     return tweets
 
+
+@blueprint.route("/tweet/post_pict", methods = ['POST'])
+@jwt_required()
+def post_pict():
+    tweets = controllerTweet.post_pict()
+    
+    return tweets
+
 @blueprint.route("/tweet/edit/<uuid:tweet_id>", methods = ['PUT'])
 @jwt_required()
 def edit_tweet(tweet_id):

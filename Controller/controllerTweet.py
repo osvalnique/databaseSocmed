@@ -58,6 +58,39 @@ def post_tweet():
 
     else:
         return {"msg" : 'Tweet Cannot be Empty'}, 400
+    
+def post_pict():
+    data = request.form
+    attachment = request.files['attachment']
+    user_id = current_user.user_id
+    
+    if data.get('tweet') != None:
+        if len(data.get('tweet')) > 280:
+            return {"msg" : 'Maximum Tweet is 280 Characters'}, 400
+        
+        if len(data.get('tweet')) <= 0:
+            return {"msg" : 'Tweet Cannot be Empty'}, 400
+    
+        if attachment != None:
+            allowed = ["gif", "jpg", "jpeg", "png", "bmp", "tiff"]
+            filename = "tweetPict" + uuid4().hex + secure_filename(attachment.filename)
+            attachment.save(os.path.join('tweetImage', filename))
+            path_img = os.path.join('tweetImage', filename)
+            extension = filename.split(".")
+            if extension[1] not in allowed:
+                return {"msg" : 'File does not Support'}, 400
+        
+            t= Tweet(
+                    user_id = user_id,
+                    tweet = data.get('tweet'),
+                    attachment = path_img
+                    )
+            db.session.add(t)
+            db.session.commit()
+            return {"msg" : 'Tweet Posted'} , 200
+        
+        else:
+            return {"msg" : 'Tweet Cannot be Empty'}, 400
 
 def edit_tweet(tweet_id):
     data = request.form
