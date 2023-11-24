@@ -14,6 +14,13 @@ def get_tweets():
     
     return tweets
 
+@blueprint.route("/tweet/tweets_id/<uuid:user_id>")
+@jwt_required()
+def get_tweets_id(user_id):
+    tweets = controllerTweet.get_tweets_id(user_id)
+    
+    return tweets
+
 @blueprint.route("/tweet/following_tweets")
 @jwt_required()
 def get_following_tweets():
@@ -41,6 +48,7 @@ def get_tweet_user(username):
     tweets = controllerTweet.get_tweets(username)
     
     return tweets
+
  
 @blueprint.route("/tweet/search/content/<string:content>")
 @jwt_required()
@@ -50,7 +58,7 @@ def search_tweet(content):
     return tweet       
 
 @blueprint.route("/tweet/post", methods = ['POST'])
-@jwt_required()
+# @jwt_required()
 def post_tweet():
     tweets = controllerTweet.post_tweet()
     

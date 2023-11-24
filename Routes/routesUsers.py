@@ -1,4 +1,4 @@
-from flask import g, request, jsonify
+from flask import g, request, jsonify, send_from_directory
 from Models import Users, db
 from Controller import controllerUsers, auth
 from . import blueprint
@@ -7,7 +7,7 @@ import bcrypt
 
 
 @blueprint.route("/login", methods=["POST"])
-@auth.banned
+# @auth.banned
 def login():
     login = auth.login()
     return login
@@ -40,6 +40,14 @@ def get_users():
     
     return users
 
+@blueprint.route("/user_id/<uuid:id>")
+# @jwt_required()
+# @auth.banned
+def get_user(id):
+    users = controllerUsers.get_user(id)
+    
+    return users
+
 @blueprint.route("/user/<string:username>")
 @jwt_required()
 @auth.banned
@@ -65,13 +73,7 @@ def get_followed_list(username):
     
     return users
 
-@blueprint.route("/user/<uuid:id>")
-@jwt_required()
-@auth.banned
-def get_user(id):
-    users = controllerUsers.get_user(id)
-    
-    return users
+
 
 @blueprint.route("/user/update", methods = ['PUT'])
 @jwt_required()
@@ -88,6 +90,14 @@ def update_image():
     users = controllerUsers.update_image()
     
     return users
+
+@blueprint.route("/user/get_avatar/<path:filename>", methods = ['GET'])
+# @jwt_required()
+# @auth.banned
+def get_avatar(filename):
+    return send_from_directory(directory="uploadedImg", path=filename)
+    
+
 
 @blueprint.route("/user/follow/<uuid:followed_id>", methods = ['PUT'])
 @jwt_required()

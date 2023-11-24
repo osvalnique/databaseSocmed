@@ -21,6 +21,15 @@ def get_tweet(id):
             "posted_by" : tweet.user.username,
             "created_at" : tweet.created_at} 
     
+def get_tweets_id(id):
+    user = Users.query.filter_by(user_id = id).first_or_404()
+    if len(user.tweet_list) <= 0:
+        return {"msg" : "Haven't Post Any Tweets"}, 400
+    
+    return {'tweets': [{"tweet" : tweet.tweet,
+            "posted_by" : tweet.user.username,
+            "created_at" : tweet.created_at} for tweet in user.tweet_list]}
+    
 def get_tweets(username):
     user = Users.query.filter_by(username = username).first_or_404()
     if len(user.tweet_list) <= 0:
@@ -54,14 +63,14 @@ def post_tweet():
             )
         db.session.add(t)
         db.session.commit()
-        return {"msg" : 'Tweet Posted'} , 200
+        return {"msg" : 'Tweet Posted'} , 201
 
     else:
         return {"msg" : 'Tweet Cannot be Empty'}, 400
     
 def post_pict():
     data = request.form
-    attachment = request.files['attachment']
+    attachment = request.files.get('attachment')
     user_id = current_user.user_id
     
     if data.get('tweet') != None:
@@ -74,8 +83,8 @@ def post_pict():
         if attachment != None:
             allowed = ["gif", "jpg", "jpeg", "png", "bmp", "tiff"]
             filename = "tweetPict" + uuid4().hex + secure_filename(attachment.filename)
-            attachment.save(os.path.join('tweetImage', filename))
-            path_img = os.path.join('tweetImage', filename)
+            attachment.save(os.path.join('tweetImg', filename))
+            path_img = os.path.join('tweetImg', filename)
             extension = filename.split(".")
             if extension[1] not in allowed:
                 return {"msg" : 'File does not Support'}, 400

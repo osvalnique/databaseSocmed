@@ -18,11 +18,28 @@ def login():
     if is_match == False:
         return {"msg" : "Password Incorrect"}, 401
     
+    if user == Status.banned:
+        abort(401, {"msg" :'This Account is Suspended'})
+        
+    # if user == Status.inactive:
+    #         user = Status.active
+    #         db.session.commit()
+    #         return {"msg" : f'Welcome Back {user.username}'}
+    
     else:
-        access_token = create_access_token(identity=username)
+        data = {"name": user.name,
+                "img_url": user.img_url,
+                }
+        access_token = create_access_token(identity=username, additional_claims=data)
         refresh_token = create_refresh_token(identity=username)
+        if user.role == Role.developer:
+            role = "developer"   
+        else:
+            role = "user"
         return jsonify(access_token=access_token,
-                       refresh_token=refresh_token)
+                       refresh_token=refresh_token,
+                       role= role,)
+    
         
 def refresh_token():
     identity= get_jwt_identity()
@@ -42,14 +59,13 @@ def developer(f):
 
 def banned(f):
     def wrap(*args, **kwargs):
-        data = request.get_json()
-        user = Users.query.filter_by(username = data['username']).first()
+        user = current_user.status
     
-        if user.status == Status.banned:
+        if user == Status.banned:
             abort(401, {"msg" :'This Account is Suspended'})
             
-        if user.status == Status.inactive:
-            user.status = Status.active
+        if user == Status.inactive:
+            user = Status.active
             db.session.commit()
             return {"msg" : f'Welcome Back {user.username}'}
 

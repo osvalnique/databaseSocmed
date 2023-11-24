@@ -25,14 +25,18 @@ def get_all():
 
 def get_user(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
+    tweet = Tweet.query.filter_by(user_id = user.user_id).all()
+    tweet_count = len(tweet)
     following_count = len(user.following_list)
     followers_count = len(user.follower_list)
     
     return {"result" :
             {"username" : user.username,
+            "bio" : user.bio,
             "name" : user.name,
             "following_count" : following_count,
             "followers_count" : followers_count,
+            "tweet_count" : tweet_count,
             "profile_picture" : user.img_url
             }}
     
@@ -115,28 +119,48 @@ def unfollow(followed_id):
     return {"msg" : f'You Are Unfollowed {followed_user.username}'}
     
 def get_following_tweets():
-    tweets = text('SELECT * FROM TWEETS T \
-        JOIN USERS U ON u.USER_ID = t.USER_ID \
-        WHERE t.USER_ID IN (SELECT followed FROM FOLLOW F)\
-        ORDER BY t.CREATED_AT DESC;')
+    tweets = text("""
+SELECT "name", X.USER_ID, IMG_URL, USERNAME, TWEET_ID, TWEET, x.attachment, x.created_at, LIKED FROM    
+	(SELECT T.CREATED_AT, T.attachment, T.USER_ID, T.TWEET_ID, T.TWEET, COUNT(L.USER_ID) AS LIKED FROM TWEETS T
+	LEFT JOIN "like" L ON T.TWEET_ID = L.TWEET_ID
+	WHERE T.USER_ID IN (SELECT FOLLOWED FROM FOLLOW F
+	WHERE F.FOLLOW = :user_id)
+	GROUP BY T.TWEET_ID) X 
+JOIN USERS U ON U.USER_ID = X.USER_ID
+""").params(user_id = current_user.user_id)
+    
     result = db.engine.connect().execute(tweets).mappings().all()
-    print(result)
-    return 'test'
-    # return [{'tweet' : t.tweet,
-    #          'posted_by' : t.username,
-    #          'created_at' : t.created_at} for t in result]
+    
+    return [{'tweet' : t.tweet,
+             'attachment' : t.attachment,
+             'name' : t.name,
+             'username' : t.username,
+             'user_id' : t.user_id,
+             'profile' : t.img_url,
+             'created_at' : t.created_at,
+             'liked' : t.liked 
+             } for t in result]
+    
             
 def create_users():
     data = request.form
-    data_img = request.files['img']
-    filename = uuid4().hex + secure_filename(data_img.filename)
-    data_img.save(os.path.join('uploadedImg', filename))
-    path_img = os.path.join('uploadedImg', filename)
-    
+    data_img = ""
+    path_img = ""
+      
+    if "img" in request.files :
+        data_img = request.files['img']
+
+        if data_img.filename != "":
+            filename = uuid4().hex + secure_filename(data_img.filename)
+            data_img.save(os.path.join('uploadedImg', filename))
+            path_img = os.path.join('uploadedImg', filename)
+        print("data_img", data_img)
+
     user = Users.query.filter_by(email = data.get('email')).first()
     
     pattern = r'^[a-zA-Z0-9_.+-]{6,}@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     is_match = bool(re.match(pattern, data.get('email')))
+    is_match = True
     
     if user != None:
         return {"msg" : 'Email is Already Registered'}, 400
@@ -165,7 +189,7 @@ def create_users():
     )
 
     db.session.add(u)
-    db.session.commit()
+    # db.session.commit()
     
     return {"msg" : 'Account Created Successfully'}, 201
 
@@ -209,12 +233,12 @@ def update_image():
         print(new_img)
         return {"msg": 'Please Import an Image'}
     
-    filename = uuid4().hex + secure_filename(new_img.filename)
+    filename = uuid4().hex + "." + secure_filename(new_img.filename.split(".")[-1])
     format = filename.rsplit('.', 1)[1].lower()
     
     if format in {'png', 'jpg', 'jpeg', 'gif'}:
+        os.makedirs('uploadedImg', exist_ok=True)
         path_img = os.path.join('uploadedImg', filename)
-        new_img.save(path_img)
     
         if current_img:
             old_path = os.path.join('uploadedImg', current_img)
@@ -222,6 +246,7 @@ def update_image():
                 os.remove(old_path)
             
         current_user.img_url = filename
+        new_img.save(path_img)
         db.session.commit()
         return {"msg": "Image Uploaded"}, 200
     

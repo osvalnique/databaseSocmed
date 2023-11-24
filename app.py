@@ -4,10 +4,13 @@ from Controller import db
 from Models.modelsUsers import Users
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from flask_cors import CORS
  
  
 def create_app():
+
     app = Flask(__name__)
+    CORS(app)
     app.config['SQLALCHEMY_DATABASE_URI']='postgresql://postgres:ernest2210@localhost:5432/dbsocmed'
 
     app.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
