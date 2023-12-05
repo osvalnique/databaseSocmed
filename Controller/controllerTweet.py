@@ -14,12 +14,31 @@ def get_all():
              "posted_by" : tweet.user.username,
              "created_at" : tweet.created_at} for tweet in tweets]
 
-def get_tweet(id):
-    tweet = Tweet.query.filter_by(tweet_id = id).first_or_404()
+def get_tweet_user_id(user_id):
+    tweets = text("""
+                    SELECT "name", X.USER_ID, IMG_URL, USERNAME, TWEET_ID, TWEET, x.attachment, x.created_at, LIKED, likes FROM    
+                    (SELECT T.CREATED_AT, T.attachment, T.USER_ID, T.TWEET_ID, T.TWEET, COUNT(L.USER_ID) AS LIKED, array_agg(u.username) AS likes  FROM TWEETS T
+                    LEFT JOIN "like" L ON T.TWEET_ID = L.TWEET_ID
+                    LEFT JOIN users u ON u.user_id = l.user_id
+                    WHERE T.USER_ID = :user_id
+                    GROUP BY T.TWEET_ID) X
+                    JOIN USERS U ON U.USER_ID = X.USER_ID
+                    ORDER BY x.created_at desc
+                    """).params(user_id = user_id)
     
-    return {"tweet" : tweet.tweet,
-            "posted_by" : tweet.user.username,
-            "created_at" : tweet.created_at} 
+    result = db.engine.connect().execute(tweets).mappings().all()
+    
+    return [{'tweet' : t.tweet,
+             'attachment' : t.attachment,
+             'name' : t.name,
+             'username' : t.username,
+             'user_id' : t.user_id,
+             'profile' : t.img_url,
+             'created_at' : t.created_at,
+             'liked_count' : t.liked, 
+             'liked_list' : t.likes,
+             'tweet_id' : t.tweet_id
+             } for t in result]
     
 def get_tweets_id(id):
     user = Users.query.filter_by(user_id = id).first_or_404()
@@ -32,10 +51,12 @@ def get_tweets_id(id):
     
 def get_tweets(username):
     user = Users.query.filter_by(username = username).first_or_404()
+    
     if len(user.tweet_list) <= 0:
         return {"msg" : f"{username} Haven't Post Any Tweets"}, 400
     
-    return {'tweets': [{"tweet" : tweet.tweet,
+    return {'tweet_count' : len(user.tweet_list),
+            'tweets': [{"tweet" : tweet.tweet,
             "posted_by" : tweet.user.username,
             "created_at" : tweet.created_at} for tweet in user.tweet_list]}
     
@@ -81,19 +102,21 @@ def post_pict():
             return {"msg" : 'Tweet Cannot be Empty'}, 400
     
         if attachment != None:
-            allowed = ["gif", "jpg", "jpeg", "png", "bmp", "tiff"]
-            filename = "tweetPict" + uuid4().hex + secure_filename(attachment.filename)
-            attachment.save(os.path.join('tweetImg', filename))
+            filename = "tweetPict" + uuid4().hex + "." + secure_filename(attachment.filename.split(".")[-1])
+            format = filename.rsplit('.', 1)[1].lower()
             path_img = os.path.join('tweetImg', filename)
-            extension = filename.split(".")
-            if extension[1] not in allowed:
+            print("path_img", path_img)
+            print("filename", filename)
+            
+            if format not in {"gif", "jpg", "jpeg", "png", "bmp", "tiff"}:
                 return {"msg" : 'File does not Support'}, 400
-        
+
             t= Tweet(
                     user_id = user_id,
                     tweet = data.get('tweet'),
-                    attachment = path_img
+                    attachment = filename
                     )
+            attachment.save(path_img)
             db.session.add(t)
             db.session.commit()
             return {"msg" : 'Tweet Posted'} , 200
@@ -138,7 +161,7 @@ def like_tweet(tweet_id):
     for i in range(len(tweet.liked)):
         if tweet.liked[i].user_id == user:
             found = True
-            return {"msg" : "Already Liked"}, 400
+            return {"msg" : "Already Liked"}, 200
 
     if found == False:   
         tweet.liked.append(user_id)
@@ -160,7 +183,7 @@ def unlike_tweet(tweet_id):
             tweet.liked.pop(i)
             db.session.commit()
             found = True
-            return {"msg" : "Already Unliked"}, 400
+            return {"msg" : "Already Unliked"}, 200
 
     if found == False:   
         return {"msg" : "You Haven't Like This Tweet Yet"}, 400    

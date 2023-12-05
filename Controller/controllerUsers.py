@@ -57,15 +57,15 @@ def get_username(username):
             "profile_picture" : user.img_url
             }}
     
-def get_following_list(username):
-    user = Users.query.filter_by(username = username).first_or_404()
+def get_following_list(user_id):
+    user = Users.query.filter_by(user_id = user_id).first_or_404()
     
     return {"result" : 
             {"following" : [u.username for u in user.following_list]
             }}
 
-def get_followed_list(username):
-    user = Users.query.filter_by(username = username).first_or_404()
+def get_followed_list(user_id):
+    user = Users.query.filter_by(user_id = user_id).first_or_404()
     
     return {"result" :
             {"followers" : [u.username for u in user.follower_list]
@@ -73,11 +73,33 @@ def get_followed_list(username):
     
 def get_last_login():
     last_login = text("SELECT USERNAME , LAST_LOGIN FROM USERS U \
-        WHERE LAST_LOGIN <= now() - INTERVAL '2' MONTH ;")
+                        WHERE LAST_LOGIN <= now() - INTERVAL '2' MONTH ;")
     result = db.engine.connect().execute(last_login).mappings().all()
     return {"result" : 
             [{"username" : user.username,
              "last_login" : user.last_login} for user in result]}
+    
+def get_user_status():
+    active_user = text("""SELECT USER_ID, "name", username from USERS U \
+                        WHERE u."status" = 'active'  """)
+    inactive_user = text("""SELECT USER_ID, "name", username from USERS U \
+                        WHERE u."status" = 'inactive'  """)
+    banned_user = text("""SELECT USER_ID, "name", username from USERS U \
+                        WHERE u."status" = 'banned'  """)
+    active = db.engine.connect().execute(active_user).mappings().all()
+    inactive = db.engine.connect().execute(inactive_user).mappings().all()
+    banned = db.engine.connect().execute(banned_user).mappings().all()
+    active_count = len(active)
+    inactive_count = len(inactive)
+    banned_count = len(banned)
+    for u in active:
+        print(u.user_id)
+    
+    return {
+        'active' : active_count,
+        'inactive' : inactive_count,
+        'banned' : banned_count,
+        }
     
 def follow(followed_id):
     user_id = current_user.user_id
@@ -96,7 +118,7 @@ def follow(followed_id):
         current_user.following_list.append(followed_user)
         
         db.session.commit()
-        return {"msg" : f'Now You Are Following {followed_user.username}'}
+        return {"msg" : f'Now You Are Following {followed_user.username}'}, 200
     
 def unfollow(followed_id):
     followed_user = Users.query.filter_by(user_id = followed_id).first()
@@ -116,18 +138,22 @@ def unfollow(followed_id):
         
     db.session.commit()
         
-    return {"msg" : f'You Are Unfollowed {followed_user.username}'}
+    return {"msg" : f'You Are Unfollowed {followed_user.username}'}, 200
     
 def get_following_tweets():
     tweets = text("""
-SELECT "name", X.USER_ID, IMG_URL, USERNAME, TWEET_ID, TWEET, x.attachment, x.created_at, LIKED FROM    
-	(SELECT T.CREATED_AT, T.attachment, T.USER_ID, T.TWEET_ID, T.TWEET, COUNT(L.USER_ID) AS LIKED FROM TWEETS T
-	LEFT JOIN "like" L ON T.TWEET_ID = L.TWEET_ID
-	WHERE T.USER_ID IN (SELECT FOLLOWED FROM FOLLOW F
-	WHERE F.FOLLOW = :user_id)
-	GROUP BY T.TWEET_ID) X 
-JOIN USERS U ON U.USER_ID = X.USER_ID
-""").params(user_id = current_user.user_id)
+                    SELECT "name", X.USER_ID, IMG_URL, USERNAME, TWEET_ID, TWEET, x.attachment, x.created_at, LIKED, likes FROM    
+                    (SELECT T.CREATED_AT, T.attachment, T.USER_ID, T.TWEET_ID, T.TWEET, COUNT(L.USER_ID) AS LIKED, array_agg(u.username) AS likes  FROM TWEETS T
+                    LEFT JOIN "like" L ON T.TWEET_ID = L.TWEET_ID
+                    LEFT JOIN users u ON u.user_id = l.user_id
+                    WHERE T.USER_ID IN
+                    (SELECT FOLLOWED FROM FOLLOW F
+                    WHERE F.FOLLOW = :user_id)
+                    OR t.user_id = :user_id
+                    GROUP BY T.TWEET_ID) X
+                    JOIN USERS U ON U.USER_ID = X.USER_ID
+                    ORDER BY x.created_at desc
+                    """).params(user_id = current_user.user_id)
     
     result = db.engine.connect().execute(tweets).mappings().all()
     
@@ -138,7 +164,9 @@ JOIN USERS U ON U.USER_ID = X.USER_ID
              'user_id' : t.user_id,
              'profile' : t.img_url,
              'created_at' : t.created_at,
-             'liked' : t.liked 
+             'liked_count' : t.liked, 
+             'liked_list' : t.likes,
+             'tweet_id' : t.tweet_id
              } for t in result]
     
             
@@ -217,14 +245,40 @@ def update_user():
         if u != None :
             return {"msg" : 'Username Already Exist'}, 400
         user.username = data['username']
+        user.name = data['name']
+        user.bio = data['bio']
         
-    hashed = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    user.password = hashed
+    if data['old-pass'] != None and data['old-pass'] != "" :
+        if bcrypt.checkpw(data['old-pass'].encode('utf-8'), user.password.encode('utf-8')) != True:
+            return {"msg" : 'Current Password Wrong !'}, 400
+        hashed = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        user.password = hashed
   
     db.session.commit()
     
     return {"msg" : 'User Updated Successfully'}, 201
 
+def search(keyword):
+    tweet = Tweet.query.filter(Tweet.tweet.ilike(f"%{keyword}%")).all()
+    user = Users.query.filter(Users.username.ilike(f"%{keyword}%")).all()
+    
+    return {"tweet":[
+                    {"name" : t.user.name,
+                     "username" : t.user.username,
+                     "img_url" : t.user.img_url,
+                     "user_id" : t.user.user_id,
+                     "liked" : len(t.liked),
+                     "tweet_id" : t.tweet_id,
+                     "attachment" : t.attachment,
+                     "tweet" : t.tweet,} for t in tweet],
+            "user":[
+                    {"name" : u.name,
+                     "username" : u.username,
+                     "user_id" : u.user_id,
+                     "img_url" : u.img_url,
+                     "bio" : u.bio} for u in user]
+    }
+    
 def update_image():
     new_img = request.files.get('new_img')
     current_img = current_user.img_url
@@ -237,8 +291,9 @@ def update_image():
     format = filename.rsplit('.', 1)[1].lower()
     
     if format in {'png', 'jpg', 'jpeg', 'gif'}:
-        os.makedirs('uploadedImg', exist_ok=True)
+        # os.makedirs('uploadedImg', exist_ok=True)
         path_img = os.path.join('uploadedImg', filename)
+        print("path_img", path_img)
     
         if current_img:
             old_path = os.path.join('uploadedImg', current_img)

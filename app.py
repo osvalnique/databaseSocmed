@@ -27,7 +27,7 @@ def create_app():
     @jwt.user_lookup_loader
     def user_look_up(__jwt_headers,jwt_data):
         identity=jwt_data['sub']
-        return Users.query.filter_by(username=identity).first()
+        return Users.query.filter_by(user_id=identity).first()
 
     
     

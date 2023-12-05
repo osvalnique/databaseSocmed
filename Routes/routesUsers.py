@@ -41,8 +41,8 @@ def get_users():
     return users
 
 @blueprint.route("/user_id/<uuid:id>")
-# @jwt_required()
-# @auth.banned
+@jwt_required()
+@auth.banned
 def get_user(id):
     users = controllerUsers.get_user(id)
     
@@ -56,24 +56,30 @@ def get_username(username):
     
     return users
 
-@blueprint.route("/user/following_list/<string:username>")
+@blueprint.route("/user/following_list/<uuid:user_id>")
 @jwt_required()
 @auth.banned
-def get_following_list(username):
-    users = controllerUsers.get_following_list(username.lower())
+def get_following_list(user_id):
+    users = controllerUsers.get_following_list(user_id)
     
     return users
 
 
-@blueprint.route("/user/followed_list/<string:username>")
+@blueprint.route("/user/followed_list/<uuid:user_id>")
 @jwt_required()
 @auth.banned
-def get_followed_list(username):
-    users = controllerUsers.get_followed_list(username.lower())
+def get_followed_list(user_id):
+    users = controllerUsers.get_followed_list(user_id)
     
     return users
 
-
+@blueprint.route("/search/<string:keyword>")
+@jwt_required()
+@auth.banned
+def search(keyword):
+    users = controllerUsers.search(keyword)
+    
+    return users
 
 @blueprint.route("/user/update", methods = ['PUT'])
 @jwt_required()
@@ -92,12 +98,13 @@ def update_image():
     return users
 
 @blueprint.route("/user/get_avatar/<path:filename>", methods = ['GET'])
-# @jwt_required()
-# @auth.banned
 def get_avatar(filename):
     return send_from_directory(directory="uploadedImg", path=filename)
-    
 
+@blueprint.route("/user/get_picture/<path:filename>", methods = ['GET'])
+def get_picture(filename):
+    return send_from_directory(directory="tweetImg", path=filename)
+    
 
 @blueprint.route("/user/follow/<uuid:followed_id>", methods = ['PUT'])
 @jwt_required()
@@ -143,6 +150,14 @@ def ban_user(id):
 @auth.banned
 def unban_user(id):
     users = controllerUsers.unban_user(id)
+    
+    return users
+
+@blueprint.route("/user/status")
+@jwt_required()
+@auth.developer
+def get_user_status():
+    users = controllerUsers.get_user_status()
     
     return users
 
