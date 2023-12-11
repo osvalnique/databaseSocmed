@@ -37,7 +37,8 @@ def get_user(id):
             "following_count" : following_count,
             "followers_count" : followers_count,
             "tweet_count" : tweet_count,
-            "profile_picture" : user.img_url
+            "profile_picture" : user.img_url,
+            "user_id" : user.user_id
             }}
     
 def get_username(username):
@@ -61,14 +62,24 @@ def get_following_list(user_id):
     user = Users.query.filter_by(user_id = user_id).first_or_404()
     
     return {"result" : 
-            {"following" : [u.username for u in user.following_list]
+            {"following" : [{
+                'username': u.username,
+                'name' : u.name,
+                'user_id' : u.user_id,
+                'img_url' : u.img_url
+                }for u in user.following_list]
             }}
 
 def get_followed_list(user_id):
     user = Users.query.filter_by(user_id = user_id).first_or_404()
     
     return {"result" :
-            {"followers" : [u.username for u in user.follower_list]
+            {"follower" : [{
+                'username': u.username,
+                'name' : u.name,
+                'user_id' : u.user_id,
+                'img_url' : u.img_url
+                }for u in user.follower_list]
             }}
     
 def get_last_login():
@@ -80,26 +91,43 @@ def get_last_login():
              "last_login" : user.last_login} for user in result]}
     
 def get_user_status():
-    active_user = text("""SELECT USER_ID, "name", username from USERS U \
+    active_user = text("""SELECT USER_ID, "name", username, img_url, last_login from USERS U \
                         WHERE u."status" = 'active'  """)
-    inactive_user = text("""SELECT USER_ID, "name", username from USERS U \
+    inactive_user = text("""SELECT USER_ID, "name", username, img_url, last_login from USERS U \
                         WHERE u."status" = 'inactive'  """)
-    banned_user = text("""SELECT USER_ID, "name", username from USERS U \
+    banned_user = text("""SELECT USER_ID, "name", username, img_url, last_login from USERS U \
                         WHERE u."status" = 'banned'  """)
+    
     active = db.engine.connect().execute(active_user).mappings().all()
     inactive = db.engine.connect().execute(inactive_user).mappings().all()
     banned = db.engine.connect().execute(banned_user).mappings().all()
     active_count = len(active)
     inactive_count = len(inactive)
     banned_count = len(banned)
-    for u in active:
-        print(u.user_id)
     
     return {
-        'active' : active_count,
-        'inactive' : inactive_count,
-        'banned' : banned_count,
-        }
+        'active_count' : len(active),
+        'active_user' :[{
+            'user_id': a.user_id,
+            'name': a.name,
+            'username': a.username,
+            'img_url': a.img_url,
+            'last_login' : a.last_login}for a in active],
+        'inactive_count' : len(inactive),
+        'inactive_user' :[{
+            'user_id': i.user_id,
+            'name': i.name,
+            'username': i.username,
+            'img_url': i.img_url,
+            'last_login' : i.last_login}for i in inactive],
+        'banned_count' : len(banned),
+        'banned_user' :[{
+            'user_id': b.user_id,
+            'name': b.name,
+            'username': b.username,
+            'img_url': b.img_url,
+            'last_login' : b.last_login}for b in banned],
+    }
     
 def follow(followed_id):
     user_id = current_user.user_id
@@ -217,7 +245,7 @@ def create_users():
     )
 
     db.session.add(u)
-    # db.session.commit()
+    db.session.commit()
     
     return {"msg" : 'Account Created Successfully'}, 201
 
@@ -356,6 +384,9 @@ def unban_user(id):
     user_id = current_user.user_id
     user = Users.query.filter_by(user_id=id).first_or_404()
     
+    if user == None:
+        return {"msg" : 'User is Not Found'}, 400
+    
     if user.status == Status.banned:
         user.status = 'active'
         db.session.commit()
@@ -364,16 +395,15 @@ def unban_user(id):
     return {"msg" : f'{user.username} Already Active'}, 400
     
 def most_followers():
-    followers = text('SELECT username, x.followers \
-        FROM \
-        (SELECT FOLLOWED, count(FOLLOWED) followers \
-        FROM FOLLOW F GROUP BY followed) x\
-        JOIN USERS U ON u.USER_ID = x.followed \
-        ORDER BY x.followers DESC\
-        LIMIT 5;')
+    followers = text("""SELECT username, x.followers, user_id, img_url, "name"
+        FROM
+        (SELECT FOLLOWED, count(FOLLOWED) followers
+        FROM FOLLOW F GROUP BY followed) x
+        JOIN USERS U ON u.USER_ID = x.followed
+        ORDER BY x.followers DESC""")
     result = db.engine.connect().execute(followers).mappings().all()
 
-    return {'results' : [dict(f) for f in result]}
+    return {'result' : [dict(f) for f in result]}
         
      
     

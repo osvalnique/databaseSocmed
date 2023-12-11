@@ -19,8 +19,8 @@ def login():
     if is_match == False:
         return {"msg" : "Password Incorrect"}, 401
     
-    if user == Status.banned:
-        abort(401, {"msg" :'This Account is Suspended'})
+    if user.status == Status.banned:
+        return {"msg" :'This Account is Suspended'}, 401
         
     # if user == Status.inactive:
     #         user = Status.active
@@ -44,7 +44,7 @@ def login():
         db.session.commit()
         return jsonify(access_token=access_token,
                        refresh_token=refresh_token,
-                       role= role,)
+                       role= role)
     
         
 def refresh_token():

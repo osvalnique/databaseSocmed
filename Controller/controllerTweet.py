@@ -99,30 +99,32 @@ def post_pict():
             return {"msg" : 'Maximum Tweet is 280 Characters'}, 400
         
         if len(data.get('tweet')) <= 0:
-            return {"msg" : 'Tweet Cannot be Empty'}, 400
+            return {"msg" : 'Tweet Cannot be Empty 1'}, 400
+        
+        if attachment == None:
+            filename = ""
     
         if attachment != None:
             filename = "tweetPict" + uuid4().hex + "." + secure_filename(attachment.filename.split(".")[-1])
             format = filename.rsplit('.', 1)[1].lower()
-            path_img = os.path.join('tweetImg', filename)
-            print("path_img", path_img)
-            print("filename", filename)
             
             if format not in {"gif", "jpg", "jpeg", "png", "bmp", "tiff"}:
                 return {"msg" : 'File does not Support'}, 400
-
-            t= Tweet(
-                    user_id = user_id,
-                    tweet = data.get('tweet'),
-                    attachment = filename
-                    )
+            
+            path_img = os.path.join('tweetImg', filename)
             attachment.save(path_img)
-            db.session.add(t)
-            db.session.commit()
-            return {"msg" : 'Tweet Posted'} , 200
+
+        t= Tweet(
+                user_id = user_id,
+                tweet = data.get('tweet'),
+                attachment = filename
+                )
+        db.session.add(t)
+        db.session.commit()
+        return {"msg" : 'Tweet Posted'} , 200
         
-        else:
-            return {"msg" : 'Tweet Cannot be Empty'}, 400
+    else:
+        return {"msg" : 'Tweet Cannot be Empty'}, 400
 
 def edit_tweet(tweet_id):
     data = request.form
@@ -189,11 +191,12 @@ def unlike_tweet(tweet_id):
         return {"msg" : "You Haven't Like This Tweet Yet"}, 400    
         
 def most_liked():
-    likes = text('SELECT t.tweet_id, username, tweet, x.likes\
-        FROM (SELECT l.tweet_id, COUNT(l.tweet_id) likes \
-        FROM "like" l GROUP BY l.tweet_id) x \
-        JOIN TWEETS T ON t.TWEET_ID = x.TWEET_ID \
-        JOIN USERS U ON t.USER_ID = u.USER_ID\
-        ORDER BY x.likes DESC;')
+    likes = text("""SELECT "name", X.USER_ID, IMG_URL, USERNAME, TWEET_ID, TWEET, x.attachment, x.created_at, LIKED, likes FROM    
+                    (SELECT T.CREATED_AT, T.attachment, T.USER_ID, T.TWEET_ID, T.TWEET, COUNT(L.USER_ID) AS LIKED, array_agg(u.username) AS likes  FROM TWEETS T
+                    LEFT JOIN "like" L ON T.TWEET_ID = L.TWEET_ID
+                    LEFT JOIN users u ON u.user_id = l.user_id
+                    GROUP BY T.TWEET_ID) X
+                    JOIN USERS U ON U.USER_ID = X.USER_ID
+					ORDER BY x.liked DESC""")
     result = db.engine.connect().execute(likes).mappings().all()
-    return {'results' : [dict(r) for r in result]}
+    return {'result' : [dict(r) for r in result]}

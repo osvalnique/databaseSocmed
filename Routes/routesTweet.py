@@ -92,7 +92,7 @@ def delete_tweet(tweet_id):
     
     return tweets
 
-@blueprint.route("/popular_tweets")
+@blueprint.route("/tweet/popular_tweets")
 def popular_tweets():
     tweets = controllerTweet.most_liked()
     
