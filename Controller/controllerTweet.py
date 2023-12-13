@@ -197,6 +197,7 @@ def most_liked():
                     LEFT JOIN users u ON u.user_id = l.user_id
                     GROUP BY T.TWEET_ID) X
                     JOIN USERS U ON U.USER_ID = X.USER_ID
+                    WHERE u."status" IN ('active', 'inactive')
 					ORDER BY x.liked DESC""")
     result = db.engine.connect().execute(likes).mappings().all()
     return {'result' : [dict(r) for r in result]}

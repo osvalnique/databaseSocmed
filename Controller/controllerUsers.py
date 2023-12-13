@@ -287,8 +287,8 @@ def update_user():
     return {"msg" : 'User Updated Successfully'}, 201
 
 def search(keyword):
-    tweet = Tweet.query.filter(Tweet.tweet.ilike(f"%{keyword}%")).all()
-    user = Users.query.filter(Users.username.ilike(f"%{keyword}%")).all()
+    tweet = Tweet.query.filter(Tweet.tweet.ilike(f"%{keyword}%")).join(Users).filter(Users.status != 'banned').all()
+    user = Users.query.filter(Users.username.ilike(f"%{keyword}%"), Users.status != 'banned').all()
     
     return {"tweet":[
                     {"name" : t.user.name,
@@ -400,6 +400,7 @@ def most_followers():
         (SELECT FOLLOWED, count(FOLLOWED) followers
         FROM FOLLOW F GROUP BY followed) x
         JOIN USERS U ON u.USER_ID = x.followed
+        WHERE u."status" IN ('active', 'inactive')
         ORDER BY x.followers DESC""")
     result = db.engine.connect().execute(followers).mappings().all()
 
