@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 from uuid import uuid4
 from sqlalchemy import text
@@ -117,7 +118,8 @@ def post_pict():
         t= Tweet(
                 user_id = user_id,
                 tweet = data.get('tweet'),
-                attachment = filename
+                attachment = filename,
+                created_at = datetime.now()
                 )
         db.session.add(t)
         db.session.commit()
