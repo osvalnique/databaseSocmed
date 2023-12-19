@@ -93,6 +93,7 @@ def post_tweet():
 def post_pict():
     data = request.form
     attachment = request.files.get('attachment')
+    print("attachment", secure_filename(attachment.filename.split(".")[-1]))
     user_id = current_user.user_id
     
     if data.get('tweet') != None:
